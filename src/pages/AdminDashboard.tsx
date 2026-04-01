@@ -14,6 +14,8 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
+import { supabaseService } from '../services/supabaseService';
+import { supabase } from '../supabaseClient';
 
 export default function AdminDashboard() {
   const { token } = useAuth();
@@ -34,10 +36,8 @@ export default function AdminDashboard() {
 
   const fetchStudents = async () => {
     try {
-      const res = await fetch('/api/admin/students', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setStudents(await res.json());
+      const data = await supabaseService.getAllStudents();
+      setStudents(data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -52,49 +52,45 @@ export default function AdminDashboard() {
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/admin/students', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(newStudent),
+      // For Supabase, we use signUp to create the auth user and the trigger handles the profile
+      const { error } = await supabase.auth.signUp({
+        email: newStudent.email,
+        password: newStudent.password || 'student123',
+        options: {
+          data: {
+            name: newStudent.name,
+            role: 'student',
+            roll_number: newStudent.rollNumber,
+            department: newStudent.department,
+            register_number: newStudent.registerNumber
+          }
+        }
       });
-      if (res.ok) {
-        setIsAddModalOpen(false);
-        setNewStudent({ email: '', name: '', rollNumber: '', department: '', registerNumber: '', password: '' });
-        fetchStudents();
-      }
+      
+      if (error) throw error;
+
+      setIsAddModalOpen(false);
+      setNewStudent({ email: '', name: '', rollNumber: '', department: '', registerNumber: '', password: '' });
+      fetchStudents();
+    } catch (err) {
+      console.error(err);
+      alert('Error adding student: ' + (err as any).message);
+    }
+  };
+
+  const fetchReport = async (studentId: string) => {
+    try {
+      const data = await supabaseService.getStudentReport(studentId);
+      setReport(data);
     } catch (err) {
       console.error(err);
     }
   };
 
-  const fetchReport = async (studentId: number) => {
+  const markAttendance = async (userId: string, status: 'present' | 'absent') => {
     try {
-      const res = await fetch(`/api/admin/reports/${studentId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setReport(await res.json());
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const markAttendance = async (userId: number, status: 'present' | 'absent') => {
-    try {
-      const res = await fetch('/api/admin/attendance', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ userId, status, date: format(new Date(), 'yyyy-MM-dd') }),
-      });
-      if (res.ok) {
-        // Show a nice feedback instead of alert
-        console.log(`Marked ${status} for student`);
-      }
+      await supabaseService.markAttendance(userId, status, format(new Date(), 'yyyy-MM-dd'));
+      console.log(`Marked ${status} for student`);
     } catch (err) {
       console.error(err);
     }

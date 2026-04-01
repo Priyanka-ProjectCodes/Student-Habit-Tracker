@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
+import { supabaseService } from '../services/supabaseService';
 
 export default function HabitsPage() {
   const { token } = useAuth();
@@ -28,10 +29,8 @@ export default function HabitsPage() {
 
   const fetchHabits = async () => {
     try {
-      const res = await fetch('/api/student/habits', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setHabits(await res.json());
+      const data = await supabaseService.getHabits();
+      setHabits(data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -47,19 +46,24 @@ export default function HabitsPage() {
     e.preventDefault();
     setIsAdding(true);
     try {
-      const res = await fetch('/api/student/habits', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(newHabit),
+      await supabaseService.addHabit({
+        name: newHabit.name,
+        type: newHabit.type,
+        goal_value: newHabit.goalValue,
+        unit: newHabit.unit
       });
-      if (res.ok) {
-        setNewHabit({ name: '', type: 'study', goalValue: 1, unit: 'hours' });
-        setIsAdding(false);
-        fetchHabits();
-      }
+      setNewHabit({ name: '', type: 'study', goalValue: 1, unit: 'hours' });
+      setIsAdding(false);
+      fetchHabits();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteHabit = async (id: number) => {
+    try {
+      await supabaseService.deleteHabit(id);
+      fetchHabits();
     } catch (err) {
       console.error(err);
     }
@@ -182,7 +186,10 @@ export default function HabitsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button className="p-2 text-rose-dark/30 hover:text-rose-accent hover:bg-rose-primary/20 rounded-lg transition-all">
+                    <button 
+                      onClick={() => handleDeleteHabit(habit.id)}
+                      className="p-2 text-rose-dark/30 hover:text-rose-accent hover:bg-rose-primary/20 rounded-lg transition-all"
+                    >
                       <Trash2 size={20} />
                     </button>
                   </div>

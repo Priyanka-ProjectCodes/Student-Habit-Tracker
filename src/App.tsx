@@ -91,8 +91,8 @@ function Sidebar() {
 
       <div className="p-4 border-t border-rose-secondary">
         <button
-          onClick={() => {
-            logout();
+          onClick={async () => {
+            await logout();
             navigate('/login');
           }}
           className="flex items-center gap-3 px-4 py-3 w-full text-left text-rose-dark/60 hover:bg-rose-primary hover:text-rose-dark rounded-lg transition-all duration-200"

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 import { Trophy, Mail, Lock, User, Hash, School, Loader2 } from 'lucide-react';
 
 export default function Signup() {
@@ -22,14 +23,22 @@ export default function Signup() {
     setError('');
 
     try {
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+      const { error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            name: formData.name,
+            role: formData.role,
+            roll_number: formData.rollNumber,
+            department: formData.department,
+            register_number: formData.registerNumber
+          }
+        }
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Signup failed');
+      if (error) throw error;
       
+      alert('Signup successful! You can now log in.');
       navigate('/login');
     } catch (err: any) {
       setError(err.message);

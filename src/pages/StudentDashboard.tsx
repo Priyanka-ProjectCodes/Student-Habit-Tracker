@@ -28,6 +28,7 @@ import {
 } from 'recharts';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
+import { supabaseService } from '../services/supabaseService';
 
 export default function StudentDashboard() {
   const { token, user } = useAuth();
@@ -37,28 +38,28 @@ export default function StudentDashboard() {
   const [motivation, setMotivation] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchData = async () => {
+    try {
+      const [profileData, habitsData, logsData, motivationRes] = await Promise.all([
+        supabaseService.getProfile(),
+        supabaseService.getHabits(),
+        supabaseService.getLogs(),
+        fetch('/api/motivation')
+      ]);
+
+      setProfile(profileData);
+      setHabits(habitsData);
+      setLogs(logsData);
+      const motData = await motivationRes.json();
+      setMotivation(motData.quote);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [profileRes, habitsRes, logsRes, motivationRes] = await Promise.all([
-          fetch('/api/student/profile', { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch('/api/student/habits', { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch('/api/student/logs', { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch('/api/motivation')
-        ]);
-
-        setProfile(await profileRes.json());
-        setHabits(await habitsRes.json());
-        setLogs(await logsRes.json());
-        const motData = await motivationRes.json();
-        setMotivation(motData.quote);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchData();
   }, [token]);
 
@@ -68,24 +69,16 @@ export default function StudentDashboard() {
     const newStatus = existingLog?.status === 'done' ? 'missed' : 'done';
 
     try {
-      const res = await fetch('/api/student/logs', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ habitId, value: 1, status: newStatus, date: today }),
+      await supabaseService.logHabit({
+        habit_id: habitId,
+        value: 1,
+        status: newStatus,
+        logged_date: today
       });
 
-      if (res.ok) {
-        // Refresh logs and profile (for XP)
-        const [logsRes, profileRes] = await Promise.all([
-          fetch('/api/student/logs', { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch('/api/student/profile', { headers: { 'Authorization': `Bearer ${token}` } })
-        ]);
-        setLogs(await logsRes.json());
-        setProfile(await profileRes.json());
-      }
+      // Update XP and stats logic locally or refetch
+      // For simplicity and accuracy with the new RLS/Triggers, we refetch
+      await fetchData();
     } catch (err) {
       console.error(err);
     }
@@ -117,7 +110,7 @@ export default function StudentDashboard() {
         </div>
         <div className="flex items-center gap-4">
           <motion.div 
-            key={profile?.daily_streak}
+            key={`streak-${profile?.daily_streak}`}
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className="bg-white text-rose-accent px-4 py-2 rounded-xl flex items-center gap-2 border border-rose-primary shadow-sm"
@@ -126,7 +119,7 @@ export default function StudentDashboard() {
             <span className="font-bold text-lg">{profile?.daily_streak} Day Streak</span>
           </motion.div>
           <motion.div 
-            key={profile?.xp_points}
+            key={`xp-${profile?.xp_points}`}
             initial={{ y: 10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             className="bg-white text-rose-dark px-4 py-2 rounded-xl flex items-center gap-2 border border-rose-primary shadow-sm"

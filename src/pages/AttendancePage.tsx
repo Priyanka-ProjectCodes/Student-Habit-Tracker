@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, CheckCircle2, XCircle, Clock, Info } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
+import { supabaseService } from '../services/supabaseService';
 
 export default function AttendancePage() {
   const { token } = useAuth();
@@ -11,10 +12,8 @@ export default function AttendancePage() {
   useEffect(() => {
     const fetchAttendance = async () => {
       try {
-        const res = await fetch('/api/student/attendance', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        setAttendance(await res.json());
+        const data = await supabaseService.getAttendance();
+        setAttendance(data);
       } catch (err) {
         console.error(err);
       } finally {
