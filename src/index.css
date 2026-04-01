@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  --color-rose-primary: #FADADD;
+  --color-rose-secondary: #F6C1CC;
+  --color-rose-accent: #E8A1B0;
+  --color-rose-bg: #FFF5F7;
+  --color-rose-dark: #4A2C2A;
+}
+
+@layer base {
+  body {
+    @apply bg-rose-bg text-rose-dark;
+  }
+}
+
